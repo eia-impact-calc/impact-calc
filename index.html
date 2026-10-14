@@ -10,8 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Impact Calc">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/favicon.png" type="image/png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>:root{padding-top:0;padding-bottom:0}body{margin:0}[hidden]{display:none!important}</style>
 <title>Impact Significance Calculator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -421,7 +421,7 @@ renderList();
   function bar(html,onGo){
     if(dismissed||document.getElementById("installbar"))return;
     const d=document.createElement("div");d.className="installbar";d.id="installbar";
-    d.innerHTML='<img src="icons/icon-192.png" alt="">'+html+'<button class="x" type="button" aria-label="Dismiss">×</button>';
+    d.innerHTML='<img src="icon-192.png" alt="">'+html+'<button class="x" type="button" aria-label="Dismiss">×</button>';
     screen.prepend(d);
     d.querySelector(".x").onclick=()=>{d.remove();try{localStorage.setItem("isc-install-x","1")}catch(e){}};
     const g=d.querySelector(".go");if(g&&onGo)g.onclick=onGo;
