@@ -1,0 +1,16 @@
+{
+  "name": "Impact Significance Calculator",
+  "short_name": "Impact Calc",
+  "description": "EIA pollutant evaluation: score criteria A–G, compute H = A·B·C·D·E·F·G and classify impacts as Low, Medium or High.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f2f3",
+  "theme_color": "#8a1538",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

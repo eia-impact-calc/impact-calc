@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#8a1538">
+<meta name="description" content="EIA pollutant evaluation calculator: H = A·B·C·D·E·F·G">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Impact Calc">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>:root{padding-top:0;padding-bottom:0}body{margin:0}[hidden]{display:none!important}</style>
+<title>Impact Significance Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* App shell: sticky top bar → scrolling screen → fixed bottom tab bar; editor slides over as a full screen */
+:root{
+  --bg:#f5f2f3; --surface:#ffffff; --surface-2:#efe9eb; --line:#e3d9dc; --fg:#1f1a1c; --muted:#6d6066;
+  --accent:#8a1538; --accent-fg:#ffffff; --accent-soft:#f6e5eb; --navy:#1d2a44; --navy-fg:#ffffff;
+  --low:#2f8a4c; --low-bg:#e3f2e8; --med:#a86b10; --med-bg:#fbefd9; --high:#c2362b; --high-bg:#fbe3df;
+  --display:"Archivo",system-ui,-apple-system,sans-serif; --body:"Source Sans 3",system-ui,-apple-system,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --top:env(safe-area-inset-top,0px); --bot:env(safe-area-inset-bottom,0px);
+  --gl:max(16px,env(safe-area-inset-left,0px)); --gr:max(16px,env(safe-area-inset-right,0px));
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141113; --surface:#1e1a1c; --surface-2:#282225; --line:#3a3236; --fg:#f2ebee; --muted:#b2a4aa;
+  --accent:#e2678d; --accent-fg:#1a0f13; --accent-soft:#3a1e28; --navy:#2b3a5c; --navy-fg:#e8edf8;
+  --low:#6dcb8b; --low-bg:#1b3323; --med:#e8b45c; --med-bg:#3a2d16; --high:#f17a6e; --high-bg:#42201c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141113; --surface:#1e1a1c; --surface-2:#282225; --line:#3a3236; --fg:#f2ebee; --muted:#b2a4aa;
+  --accent:#e2678d; --accent-fg:#1a0f13; --accent-soft:#3a1e28; --navy:#2b3a5c; --navy-fg:#e8edf8;
+  --low:#6dcb8b; --low-bg:#1b3323; --med:#e8b45c; --med-bg:#3a2d16; --high:#f17a6e; --high-bg:#42201c; color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font:16px/1.45 var(--body);overscroll-behavior:none}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.sr{position:absolute;left:-9999px}
+
+.shell{height:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;background:var(--bg);position:relative;overflow:hidden}
+@media (min-width:600px){.shell{border-left:1px solid var(--line);border-right:1px solid var(--line)}}
+
+.appbar{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-fg);padding:calc(var(--top) + 10px) var(--gr) 12px var(--gl);display:flex;align-items:center;gap:10px}
+.appbar .ttl{flex:1;min-width:0}
+.appbar h1{font-size:1.15rem;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.appbar small{display:block;font-size:.76rem;opacity:.85;letter-spacing:.04em}
+.iconbtn{width:40px;height:40px;border-radius:50%;border:0;background:transparent;color:inherit;display:grid;place-items:center;flex:none}
+.iconbtn:active{background:rgba(255,255,255,.18)}
+.iconbtn svg{width:22px;height:22px}
+
+.screen{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px var(--gr) calc(96px + var(--bot)) var(--gl);display:flex;flex-direction:column;gap:14px}
+.screen[hidden]{display:none!important}
+.screen>*{flex-shrink:0}
+
+/* Summary */
+.counts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.count{border-radius:12px;padding:10px 12px;display:grid}
+.count b{font:700 1.5rem/1.1 var(--mono)}
+.count span{font-size:.8rem;font-weight:600}
+.count.high{background:var(--high-bg);color:var(--high)} .count.med{background:var(--med-bg);color:var(--med)} .count.low{background:var(--low-bg);color:var(--low)}
+.formula-strip{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:2px 10px;background:var(--navy);color:var(--navy-fg);border-radius:12px;padding:10px 14px;font-size:.82rem}
+.formula-strip b{font:700 .95rem var(--mono);white-space:nowrap}
+.formula-strip span{white-space:nowrap}
+
+.sectionlabel{font:700 .74rem var(--body);text-transform:uppercase;letter-spacing:.12em;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+.sectionlabel button{border:0;background:none;color:var(--accent);font:700 .8rem var(--body);letter-spacing:.02em;text-transform:none;padding:4px 0}
+
+/* Pollutant cards */
+.list{display:flex;flex-direction:column;gap:10px}
+.card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px 12px 16px;position:relative;overflow:hidden}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px}
+.card.low::before{background:var(--low)} .card.med::before{background:var(--med)} .card.high::before{background:var(--high)}
+.card:active{background:var(--surface-2)}
+.card .nm{font:700 1rem var(--display);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .sc{font:500 .78rem var(--mono);color:var(--muted);letter-spacing:.02em}
+.card .hv{grid-row:1 / span 2;grid-column:2;text-align:right;display:grid;justify-items:end;gap:3px}
+.card .hv b{font:700 1.35rem/1 var(--mono)}
+.card.low .hv b{color:var(--low)} .card.med .hv b{color:var(--med)} .card.high .hv b{color:var(--high)}
+.pill{display:inline-block;font:700 .66rem var(--body);text-transform:uppercase;letter-spacing:.08em;padding:3px 8px;border-radius:999px}
+.pill.low{background:var(--low-bg);color:var(--low)} .pill.med{background:var(--med-bg);color:var(--med)} .pill.high{background:var(--high-bg);color:var(--high)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:24px 18px;text-align:center;display:grid;gap:8px}
+
+.fab{position:absolute;right:calc(var(--gr) + 2px);bottom:calc(76px + var(--bot));z-index:6;border:0;border-radius:16px;background:var(--accent);color:var(--accent-fg);font:700 .95rem var(--display);padding:14px 18px;display:flex;align-items:center;gap:8px;box-shadow:0 6px 18px rgba(80,10,35,.28)}
+.fab svg{width:20px;height:20px}
+
+/* Tab bar */
+.tabbar{position:absolute;left:0;right:0;bottom:0;z-index:7;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);padding:6px var(--gr) calc(6px + var(--bot)) var(--gl)}
+.tab{border:0;background:none;display:grid;justify-items:center;gap:2px;padding:6px 0;color:var(--muted);font:600 .74rem var(--body)}
+.tab svg{width:24px;height:24px}
+.tab .ic{padding:3px 18px;border-radius:999px}
+.tab[aria-selected="true"]{color:var(--accent)}
+.tab[aria-selected="true"] .ic{background:var(--accent-soft)}
+
+/* Editor (full-screen page) */
+.page{position:absolute;inset:0;z-index:10;background:var(--bg);display:flex;flex-direction:column;transform:translateX(100%);visibility:hidden;transition:transform .28s ease,visibility 0s linear .28s}
+.page.open{transform:none;visibility:visible;transition:transform .28s ease}
+@media (prefers-reduced-motion:reduce){.page,.sheet,.scrim{transition:none!important}}
+.page .screen{padding-bottom:calc(32px + var(--bot))}
+.namefield{display:grid;gap:4px}
+.namefield label{font:700 .72rem var(--body);text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.namefield input{width:100%;font:700 1.15rem var(--display);border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px}
+.result{border-radius:14px;padding:14px 16px;display:grid;gap:6px}
+.result.low{background:var(--low-bg)} .result.med{background:var(--med-bg)} .result.high{background:var(--high-bg)}
+.result .row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.result .big{font:800 2.4rem/1 var(--mono)}
+.result.low .big{color:var(--low)} .result.med .big{color:var(--med)} .result.high .big{color:var(--high)}
+.result .calc{font:500 .82rem var(--mono);color:var(--muted);word-break:break-word}
+.result .act{font-size:.92rem}
+.lever{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:10px 12px;font-size:.9rem}
+.crit{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.crit-h{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line)}
+.crit-h .k{font:700 .8rem var(--mono);background:var(--navy);color:var(--navy-fg);border-radius:6px;padding:2px 7px}
+.crit-h b{font:700 .95rem var(--display);flex:1;min-width:0}
+.crit-h .cur{font:700 1.05rem var(--mono);color:var(--accent)}
+.opt{display:flex;align-items:center;gap:12px;width:100%;border:0;border-top:1px solid var(--line);background:none;text-align:left;padding:11px 14px;font-size:.93rem;min-height:46px}
+.opt:first-of-type{border-top:0}
+.opt .radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center}
+.opt .t{flex:1;min-width:0}
+.opt .s{font:700 .8rem var(--mono);background:var(--surface-2);border-radius:6px;padding:2px 8px}
+.opt[aria-checked="true"]{background:var(--accent-soft)}
+.opt[aria-checked="true"] .radio{border-color:var(--accent)}
+.opt[aria-checked="true"] .radio::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.opt[aria-checked="true"] .s{background:var(--accent);color:var(--accent-fg)}
+.danger{border:1px solid var(--line);background:var(--surface);color:var(--high);border-radius:12px;padding:12px;font-weight:700}
+
+/* Rank */
+.rank{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:12px}
+.rrow{display:grid;gap:4px}
+.rrow .top{display:flex;justify-content:space-between;gap:10px;font-size:.9rem}
+.rrow .top span:first-child{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.rrow .top b{font-family:var(--mono)}
+.track{position:relative;height:14px;border-radius:7px;background:linear-gradient(90deg,var(--low-bg) 0 var(--t25),var(--med-bg) var(--t25) var(--t200),var(--high-bg) var(--t200) 100%)}
+.fill{position:absolute;left:0;top:0;bottom:0;border-radius:7px;transition:width .4s ease}
+.fill.low{background:var(--low)} .fill.med{background:var(--med)} .fill.high{background:var(--high)}
+.mark{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--fg);opacity:.35}
+.axis{position:relative;height:18px;font:500 .72rem var(--mono);color:var(--muted)}
+.axis span{position:absolute;transform:translateX(-50%)}
+.axis span:first-child{transform:none}
+.axis span:last-child{transform:translateX(-100%)}
+.note{font-size:.85rem;color:var(--muted)}
+
+/* Guide */
+.box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;gap:8px}
+.box h2{font-size:1.02rem}
+.bands{display:grid;gap:8px}
+.band{border-radius:10px;padding:10px 12px;font-size:.9rem}
+.band b{font-family:var(--mono);display:block}
+.band.low{background:var(--low-bg);color:var(--low)} .band.med{background:var(--med-bg);color:var(--med)} .band.high{background:var(--high-bg);color:var(--high)}
+details.ref{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+details.ref summary{padding:12px 16px;font:700 .95rem var(--display);display:flex;gap:10px;align-items:center;list-style:none}
+details.ref summary::-webkit-details-marker{display:none}
+details.ref summary .k{font:700 .78rem var(--mono);background:var(--navy);color:var(--navy-fg);border-radius:6px;padding:2px 7px}
+details.ref summary::after{content:"+";margin-left:auto;color:var(--muted);font-size:1.2rem}
+details.ref[open] summary::after{content:"−"}
+details.ref ul{list-style:none;margin:0;padding:0 16px 10px}
+details.ref li{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px dashed var(--line);font-size:.9rem}
+details.ref li span:last-child{font:700 .9rem var(--mono)}
+ol.steps{margin:0;padding-left:20px;display:grid;gap:4px;font-size:.92rem}
+
+/* Bottom sheet */
+.scrim{position:absolute;inset:0;z-index:20;background:rgba(10,5,8,.45);opacity:0;visibility:hidden;transition:opacity .2s,visibility 0s linear .2s}
+.scrim.open{opacity:1;visibility:visible;transition:opacity .2s}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:21;background:var(--surface);border-radius:20px 20px 0 0;padding:10px var(--gr) calc(18px + var(--bot)) var(--gl);transform:translateY(105%);visibility:hidden;transition:transform .25s ease,visibility 0s linear .25s;display:grid;gap:6px}
+.sheet.open{transform:none;visibility:visible;transition:transform .25s ease}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 6px}
+.sheet h3{font-size:1rem;padding:4px 2px 6px}
+.sheet .item{display:flex;align-items:center;gap:12px;border:0;background:none;text-align:left;padding:12px 6px;border-radius:10px;font-size:.98rem}
+.sheet .item:active{background:var(--surface-2)}
+.sheet .item svg{width:22px;height:22px;color:var(--accent);flex:none}
+.sheet .item small{display:block;color:var(--muted);font-size:.8rem}
+.sheet input{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:12px;font-size:1rem}
+.sheet .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 16px;font-weight:700}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+
+.toast{position:absolute;left:50%;bottom:calc(84px + var(--bot));transform:translate(-50%,20px);z-index:30;background:var(--fg);color:var(--bg);border-radius:999px;padding:9px 16px;font-size:.88rem;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;white-space:nowrap;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+<style>
+.installbar{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:12px 14px}
+.installbar img{width:40px;height:40px;border-radius:10px;flex:none}
+.installbar .tx{flex:1;min-width:0;font-size:.88rem;line-height:1.3}
+.installbar .tx b{display:block;font:700 .95rem var(--display)}
+.installbar .go{border:0;background:var(--accent);color:var(--accent-fg);font:700 .9rem var(--display);border-radius:10px;padding:9px 14px;flex:none}
+.installbar .x{border:0;background:none;color:var(--muted);font-size:1.2rem;padding:4px;flex:none}
+.ios-share{display:inline-block;vertical-align:-3px;width:16px;height:16px}
+</style>
+</head>
+<body>
+
+<div class="shell" id="shell">
+  <header class="appbar">
+    <div class="ttl"><h1 id="barTitle">Impact Calculator</h1><small id="barSub">EIA pollutant evaluation</small></div>
+    <button class="iconbtn" id="menuBtn" type="button" aria-label="More options">
+      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+    </button>
+  </header>
+
+  <!-- ASSESS -->
+  <main class="screen" id="tab-assess" aria-label="Assess">
+    <div class="formula-strip"><b>H = A·B·C·D·E·F·G</b><span>Low &lt;25 · Med 25–200 · High &gt;200</span></div>
+    <div class="counts">
+      <div class="count high"><b id="cHigh">0</b><span>High</span></div>
+      <div class="count med"><b id="cMed">0</b><span>Medium</span></div>
+      <div class="count low"><b id="cLow">0</b><span>Low</span></div>
+    </div>
+    <div class="sectionlabel"><span id="listLabel">Pollutants</span><button type="button" id="sortBtn">Rank by H</button></div>
+    <div class="list" id="list"></div>
+  </main>
+
+  <!-- RANK -->
+  <main class="screen" id="tab-rank" aria-label="Ranking" hidden>
+    <div class="sectionlabel"><span>Impact ranking (log scale)</span></div>
+    <div class="rank" id="rank"></div>
+    <p class="note" style="margin:0">Bars use a log scale so small and large impacts stay comparable. The background shows the Low, Medium and High zones; lines mark H = 25 and H = 200.</p>
+  </main>
+
+  <!-- GUIDE -->
+  <main class="screen" id="tab-guide" aria-label="Guide" hidden>
+    <div class="box">
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li>Add a pollutant or impact.</li>
+        <li>For each criterion A–G, tap the description that fits.</li>
+        <li>The app multiplies the seven scores to get H and classifies it.</li>
+        <li>Use the biggest-lever tip to choose where mitigation helps most.</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h2>Classification</h2>
+      <div class="bands">
+        <div class="band low"><b>H &lt; 25 · Low</b>Acceptable. Keep routine monitoring.</div>
+        <div class="band med"><b>25 – 200 · Medium</b>Control and/or mitigation measures warranted.</div>
+        <div class="band high"><b>H &gt; 200 · High</b>Priority impact. Mitigation required.</div>
+      </div>
+      <p class="note" style="margin:0">H = 25 and H = 200 sit on the band edges; the app counts both as Medium.</p>
+    </div>
+    <div class="sectionlabel"><span>Evaluation matrix</span></div>
+    <div id="refList" style="display:grid;gap:8px"></div>
+    <p class="note" style="margin:0">The Abbot Point example uses illustrative scores for discussion, not published project data.</p>
+  </main>
+
+  <button class="fab" id="fab" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add pollutant</button>
+
+  <nav class="tabbar" role="tablist" aria-label="Sections">
+    <button class="tab" role="tab" data-tab="assess" aria-selected="true" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>Assess</button>
+    <button class="tab" role="tab" data-tab="rank" aria-selected="false" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h14M4 12h9M4 18h5"/></svg></span>Rank</button>
+    <button class="tab" role="tab" data-tab="guide" aria-selected="false" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/><path d="M8 7h6"/></svg></span>Guide</button>
+  </nav>
+
+  <!-- EDITOR PAGE -->
+  <section class="page" id="editor" aria-label="Edit pollutant" aria-hidden="true">
+    <header class="appbar">
+      <button class="iconbtn" id="backBtn" type="button" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="ttl"><h1 id="edTitle">Pollutant</h1><small>Tap a description for each criterion</small></div>
+    </header>
+    <div class="screen" id="edBody"></div>
+  </section>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="menuSheet" role="dialog" aria-label="Options" aria-hidden="true">
+    <div class="grab"></div>
+    <button class="item" type="button" data-act="course"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4z"/><path d="M7 9v5c0 1.5 2.5 3 5 3s5-1.5 5-3V9"/></svg><span>Load course example<small>NO, NO₂, CO₂, wastewater, solid waste</small></span></button>
+    <button class="item" type="button" data-act="abbot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18c3 0 3-2 6-2s3 2 6 2 3-2 6-2"/><path d="M6 14V8h8l3 6"/><path d="M10 8V4"/></svg><span>Load Abbot Point example<small>Coal terminal expansion, illustrative scores</small></span></button>
+    <button class="item" type="button" data-act="copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span>Copy results table<small>Paste into Excel, Word or PowerPoint</small></span></button>
+    <button class="item" type="button" data-act="blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v6h6"/><path d="M5 15a8 8 0 1 0 2-8.5L4 10"/></svg><span>Start blank<small>Remove all pollutants</small></span></button>
+  </div>
+  <form class="sheet" id="addSheet" role="dialog" aria-label="Add pollutant" aria-hidden="true">
+    <div class="grab"></div>
+    <h3>Add pollutant or impact</h3>
+    <label for="newName" class="sr">Name</label>
+    <input id="newName" maxlength="40" placeholder="e.g. SO₂, Dust, Noise" autocomplete="off">
+    <div class="actions"><button class="btn" type="button" id="addCancel">Cancel</button><button class="btn primary" type="submit">Add</button></div>
+  </form>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+const CRIT=[
+ {k:"A",name:"Quantity / Magnitude",opts:[["Excessive",5],["Very high",4],["High",3],["Moderate",2],["Low",1]]},
+ {k:"B",name:"Occurrence / Frequency",opts:[["Continuous",5],["Several times a day",4],["Once a day",3],["Once a week",2],["Once a month or less",1]]},
+ {k:"C",name:"Duration",opts:[["Greater than life of project",3],["More than 1 year, less than life of project",2],["Less than 1 year",1]]},
+ {k:"D",name:"Scale / Severity",opts:[["Global scale / human fatality",5],["Regional / human health effect",4],["Regional / kills flora & fauna",3],["Regional / affects flora & fauna",3],["Localized deposition or resource consumption",3],["Localized / causes discomfort",2],["Small area / negligible impact",1]]},
+ {k:"E",name:"Legislation",opts:[["Not meeting legislation",2],["In compliance",1]]},
+ {k:"F",name:"Controls and Detection",opts:[["Absence of control",4],["Ineffective controls",3],["Not reliable control",2],["Available and effective",1]]},
+ {k:"G",name:"Preventive Mechanism",opts:[["More than a month",5],["More than a week",4],["More than 24 hours",3],["More than 2 hours",2],["Immediately",1]]}
+];
+const uid=()=>Math.random().toString(36).slice(2,9);
+const mk=(name,s,dPick)=>({id:uid(),name,sel:s.map((v,c)=>c===3?dPick:CRIT[c].opts.findIndex(o=>o[1]===v))});
+const PRESETS={
+ course:()=>[mk("NO",[5,5,2,3,2,1,1],3),mk("NO₂",[1,5,2,2,1,1,1],5),mk("CO₂",[3,5,2,5,1,1,1],0),mk("WW (wastewater)",[2,5,2,3,1,1,1],4),mk("SW (solid waste)",[1,1,1,3,1,2,1],4)],
+ abbot:()=>[mk("Dredge sediment plumes",[4,5,2,3,1,2,3],2),mk("Coal dust on wetland",[3,5,2,3,1,2,2],4),mk("GHG, on-site",[3,5,2,5,1,1,1],0),mk("Stormwater runoff",[2,1,2,3,1,1,2],4),mk("Construction noise",[2,4,1,2,1,1,1],5)]
+};
+const MAXH=CRIT.reduce((p,c)=>p*Math.max(...c.opts.map(o=>o[1])),1); // 15000
+let rows=[],editId=null;
+const $=s=>document.querySelector(s);
+const score=(r,c)=>CRIT[c].opts[r.sel[c]][1];
+const H=r=>r.sel.reduce((p,_,c)=>p*score(r,c),1);
+const level=h=>h>200?"high":h>=25?"med":"low";
+const LABEL={low:"Low",med:"Medium",high:"High"};
+const ACTION={low:"Acceptable. Keep routine monitoring.",med:"Control and/or mitigation measures are warranted.",high:"Priority impact. Mitigation is required and it goes into the detailed study."};
+const esc=s=>String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+
+function save(){try{localStorage.setItem("isc-app",JSON.stringify(rows))}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem("isc-app"));if(Array.isArray(d)){rows=d;return true}}catch(e){}return false}
+
+function renderList(){
+  const ls=rows.map(r=>level(H(r)));
+  $("#cHigh").textContent=ls.filter(x=>x==="high").length;
+  $("#cMed").textContent=ls.filter(x=>x==="med").length;
+  $("#cLow").textContent=ls.filter(x=>x==="low").length;
+  $("#listLabel").textContent=`Pollutants (${rows.length})`;
+  $("#list").innerHTML=rows.length?rows.map(r=>{const h=H(r),l=level(h);return `<button class="card ${l}" type="button" data-id="${r.id}">
+    <span class="nm">${esc(r.name)}</span>
+    <span class="hv"><b>${h.toLocaleString()}</b><span class="pill ${l}">${LABEL[l]}</span></span>
+    <span class="sc">${CRIT.map((c,i)=>c.k+score(r,i)).join(" · ")}</span></button>`}).join(""):
+    `<div class="empty"><b>No pollutants yet</b><span class="muted">Tap “Add pollutant”, or load an example from the menu.</span></div>`;
+  renderRank();save();
+}
+function renderRank(){
+  const box=$("#rank");
+  if(!rows.length){box.innerHTML=`<p class="muted" style="margin:0">Add pollutants to see the ranking.</p>`;return}
+  const lm=Math.log10(MAXH),pct=v=>Math.log10(Math.max(v,1))/lm*100;
+  box.style.setProperty("--t25",pct(25)+"%");box.style.setProperty("--t200",pct(200)+"%");
+  const data=[...rows].sort((a,b)=>H(b)-H(a));
+  box.innerHTML=data.map(r=>{const h=H(r),l=level(h);return `<div class="rrow"><div class="top"><span>${esc(r.name)}</span><b>${h.toLocaleString()}</b></div>
+    <div class="track"><div class="fill ${l}" style="width:${Math.max(pct(h),2)}%"></div><div class="mark" style="left:${pct(25)}%"></div><div class="mark" style="left:${pct(200)}%"></div></div></div>`}).join("")+
+    `<div class="axis"><span style="left:0">1</span><span style="left:${pct(25)}%">25</span><span style="left:${pct(200)}%">200</span><span style="left:100%">${MAXH.toLocaleString()}</span></div>`;
+}
+function renderEditor(keepScroll){
+  const r=rows.find(x=>x.id===editId);if(!r)return;
+  const body=$("#edBody"),y=body.scrollTop;
+  const h=H(r),l=level(h);
+  let best=null;CRIT.forEach((c,ci)=>{const cur=score(r,ci),min=Math.min(...c.opts.map(o=>o[1]));if(cur>min){const nh=h/cur*min;if(!best||nh<best.nh)best={ci,nh,min}}});
+  const lever=!best?"All criteria are already at their lowest score.":
+    `<b>Biggest lever:</b> lowering <b>${CRIT[best.ci].k} (${CRIT[best.ci].name})</b> to ${best.min} cuts H from ${h.toLocaleString()} to <b>${best.nh.toLocaleString()}</b> (−${Math.round((1-best.nh/h)*100)}%)${level(best.nh)!==l?`, making it <b>${LABEL[level(best.nh)]}</b>`:""}.`;
+  $("#edTitle").textContent=r.name;
+  body.innerHTML=`
+   <div class="namefield"><label for="nameInput">Name</label><input id="nameInput" value="${esc(r.name)}" maxlength="40"></div>
+   <div class="result ${l}" id="resBox">
+     <div class="row"><span class="big">${h.toLocaleString()}</span><span class="pill ${l}">${LABEL[l]} impact</span></div>
+     <span class="calc">H = ${CRIT.map((_,c)=>score(r,c)).join(" × ")}</span>
+     <span class="act">${ACTION[l]}</span>
+   </div>
+   <div class="lever">${lever}</div>
+   ${CRIT.map((c,ci)=>`<div class="crit" role="radiogroup" aria-label="${c.k} ${c.name}">
+     <div class="crit-h"><span class="k">${c.k}</span><b>${c.name}</b><span class="cur">${score(r,ci)}</span></div>
+     ${c.opts.map((o,oi)=>`<button type="button" class="opt" role="radio" data-c="${ci}" data-o="${oi}" aria-checked="${r.sel[ci]===oi}"><span class="radio"></span><span class="t">${o[0]}</span><span class="s">${o[1]}</span></button>`).join("")}
+   </div>`).join("")}
+   <button class="danger" type="button" id="delBtn">Delete pollutant</button>`;
+  if(keepScroll)body.scrollTop=y;
+}
+function openEditor(id){editId=id;renderEditor();const p=$("#editor");p.classList.add("open");p.setAttribute("aria-hidden","false");$("#edBody").scrollTop=0;history.pushState({ed:1},"")}
+function closeEditor(fromPop){const p=$("#editor");if(!p.classList.contains("open"))return;p.classList.remove("open");p.setAttribute("aria-hidden","true");editId=null;renderList();if(!fromPop&&history.state&&history.state.ed)history.back()}
+addEventListener("popstate",()=>{closeEditor(true);closeSheets()});
+
+// list + editor events
+$("#list").addEventListener("click",e=>{const c=e.target.closest(".card");if(c)openEditor(c.dataset.id)});
+$("#backBtn").onclick=()=>closeEditor();
+$("#edBody").addEventListener("click",e=>{
+  const o=e.target.closest(".opt");
+  if(o){const r=rows.find(x=>x.id===editId);r.sel[+o.dataset.c]=+o.dataset.o;save();renderEditor(true);
+    const nb=document.querySelector(`.opt[data-c="${o.dataset.c}"][data-o="${o.dataset.o}"]`);nb&&nb.focus({preventScroll:true});return}
+  if(e.target.id==="delBtn"){const r=rows.find(x=>x.id===editId);rows=rows.filter(x=>x.id!==editId);closeEditor();toast(`Deleted ${r.name}`)}
+});
+$("#edBody").addEventListener("input",e=>{if(e.target.id==="nameInput"){const r=rows.find(x=>x.id===editId);r.name=e.target.value.trim()||"Untitled";$("#edTitle").textContent=r.name;save()}});
+
+// tabs
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected",x===t));
+  ["assess","rank","guide"].forEach(n=>$("#tab-"+n).hidden=n!==t.dataset.tab);
+  $("#fab").hidden=t.dataset.tab!=="assess";
+  $("#barSub").textContent={assess:"EIA pollutant evaluation",rank:"Highest impact first",guide:"Criteria and classification"}[t.dataset.tab];
+});
+$("#sortBtn").onclick=()=>{rows.sort((a,b)=>H(b)-H(a));renderList();toast("Ranked by H")};
+
+// sheets
+function openSheet(id){closeSheets();$("#scrim").classList.add("open");const s=$(id);s.classList.add("open");s.setAttribute("aria-hidden","false")}
+function closeSheets(){$("#scrim").classList.remove("open");document.querySelectorAll(".sheet").forEach(s=>{s.classList.remove("open");s.setAttribute("aria-hidden","true")})}
+$("#scrim").onclick=closeSheets;
+$("#menuBtn").onclick=()=>openSheet("#menuSheet");
+$("#fab").onclick=()=>{openSheet("#addSheet");setTimeout(()=>$("#newName").focus(),260)};
+$("#addCancel").onclick=closeSheets;
+$("#addSheet").addEventListener("submit",e=>{e.preventDefault();const n=$("#newName").value.trim();if(!n){$("#newName").focus();return}
+  const r={id:uid(),name:n,sel:CRIT.map(c=>c.opts.length-1)};rows.push(r);$("#newName").value="";closeSheets();renderList();openEditor(r.id)});
+$("#menuSheet").addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(!b)return;const a=b.dataset.act;closeSheets();
+  if(a==="course"){rows=PRESETS.course();renderList();toast("Course example loaded")}
+  if(a==="abbot"){rows=PRESETS.abbot();renderList();toast("Abbot Point example loaded")}
+  if(a==="blank"){rows=[];renderList();toast("Cleared")}
+  if(a==="copy")copyTable();
+});
+function copyTable(){
+  const txt=[["Pollutant","A","B","C","D","E","F","G","H","Level"].join("\t"),...rows.map(r=>[r.name,...CRIT.map((_,c)=>score(r,c)),H(r),LABEL[level(H(r))]].join("\t"))].join("\n");
+  const fb=()=>{const ta=document.createElement("textarea");ta.value=txt;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand("copy")}catch(e){}ta.remove();toast(ok?"Table copied":"Copy not available here")};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(()=>toast("Table copied"),fb);else fb();
+}
+let tt;function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>t.classList.remove("show"),2200)}
+
+// guide reference
+$("#refList").innerHTML=CRIT.map(c=>`<details class="ref"><summary><span class="k">${c.k}</span>${c.name}</summary><ul>${c.opts.map(o=>`<li><span>${o[0]}</span><span>${o[1]}</span></li>`).join("")}</ul></details>`).join("");
+
+if(!load()||!rows.length)rows=PRESETS.course();
+renderList();
+</script>
+<script>
+(function(){
+  const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+  if(standalone)return;
+  let dismissed=false;try{dismissed=localStorage.getItem("isc-install-x")==="1"}catch(e){}
+  const ua=navigator.userAgent, isIOS=/iphone|ipad|ipod/i.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  const screen=document.getElementById("tab-assess");
+  let deferred=null;
+  function bar(html,onGo){
+    if(dismissed||document.getElementById("installbar"))return;
+    const d=document.createElement("div");d.className="installbar";d.id="installbar";
+    d.innerHTML='<img src="icons/icon-192.png" alt="">'+html+'<button class="x" type="button" aria-label="Dismiss">×</button>';
+    screen.prepend(d);
+    d.querySelector(".x").onclick=()=>{d.remove();try{localStorage.setItem("isc-install-x","1")}catch(e){}};
+    const g=d.querySelector(".go");if(g&&onGo)g.onclick=onGo;
+  }
+  addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;
+    bar('<span class="tx"><b>Install Impact Calc</b>Add it to your home screen. Works offline.</span><button class="go" type="button">Install</button>',
+      async()=>{deferred.prompt();await deferred.userChoice;deferred=null;const b=document.getElementById("installbar");b&&b.remove()});
+  });
+  addEventListener("appinstalled",()=>{const b=document.getElementById("installbar");b&&b.remove()});
+  if(isIOS){
+    const share='<svg class="ios-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 11v9h14v-9"/></svg>';
+    bar('<span class="tx"><b>Install Impact Calc</b>Tap '+share+' Share, then <b style="display:inline;font:inherit;font-weight:700">Add to Home Screen</b>.</span>');
+  }
+})();
+</script>
+<script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}</script>
+</body>
+</html>
